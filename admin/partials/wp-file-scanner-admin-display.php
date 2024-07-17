@@ -13,7 +13,9 @@
  */
 
 // Get the paginated files using the wpfs_admin_page function
-$wp_file_scanner = new Wp_File_Scanner_Admin();
+define('WPFS_PLUGIN_NAME', 'WP File Scanner');
+define('WPFS_VERSION', '1.0.0');
+$wp_file_scanner = new Wp_File_Scanner_Admin(WPFS_PLUGIN_NAME, WPFS_VERSION);
 $file = $wp_file_scanner->wpfs_pagination();
 
 // Display the admin page content
