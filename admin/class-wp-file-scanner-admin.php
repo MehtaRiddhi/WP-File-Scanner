@@ -203,6 +203,8 @@ class Wp_File_Scanner_Admin {
 	        // Sanitize the file path using wp_normalize_path()
             $sanitized_path = wp_normalize_path( $root_dir. '/'. $dir );
 
+            $dir_path = ''; 
+            
 	        // Validate the directory path
 	        if (!is_dir($dir_path)) {
 	            continue; // Skip if not a directory

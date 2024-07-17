@@ -16,6 +16,8 @@
 define('WPFS_PLUGIN_NAME', 'WP File Scanner');
 define('WPFS_VERSION', '1.0.0');
 
+$files = array();
+
 $total_items = 100; // Replace with the total number of items
 $per_page = 10; // Replace with the number of items per page
 
@@ -36,14 +38,19 @@ $file = $wp_file_scanner->wpfs_pagination($total_items, $per_page);
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($files as $file) {?>
-                <tr>
-                    <td><?php echo esc_html($file['name']); ?></td>
-                    <td><?php echo esc_html(size_format($file['size'])); ?></td>
-                    <td><?php echo esc_html($file['type']); ?></td>
-                    <td><a href="<?php echo esc_url($file['absolute_path']); ?>" target="_blank"><?php echo esc_html($file['absolute_path']); ?></a></td>
-                </tr>
-            <?php }?>
+            <?php if (isset($files) && is_array($files)) {
+                
+                foreach ($files as $file) { ?>
+                    <tr>
+                        <td><?php echo esc_html($file['name']); ?></td>
+                        <td><?php echo esc_html(size_format($file['size'])); ?></td>
+                        <td><?php echo esc_html($file['type']); ?></td>
+                        <td><a href="<?php echo esc_url($file['absolute_path']); ?>" target="_blank"><?php echo esc_html($file['absolute_path']); ?></a></td>
+                    </tr>
+                <?php }
+
+            } ?>
+            
         </tbody>
     </table>
 
