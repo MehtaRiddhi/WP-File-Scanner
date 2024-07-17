@@ -127,7 +127,7 @@ class Wp_File_Scanner_Admin {
  	*/
     public function wpfs_admin_page() {
         // Render the admin page content
-        include_once 'partials/wp-file-scanner-admin-display.php';
+        include_once plugin_dir_path( __FILE__ ) . 'partials/wp-file-scanner-admin-display.php';
     }
 
     /**
