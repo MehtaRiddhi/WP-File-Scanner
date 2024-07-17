@@ -219,10 +219,12 @@ class Wp_File_Scanner_Admin {
 	            $file_path = $dir_path. '/'. $file;
 	            $file_name = $file;
 
+	            $format_size_var = $this->wpfs_format_size(filesize($file_path));
+
 	            // Get file information
 	            $file_info = array();
 	            $file_info['type'] = __('file', 'wp-file-scanner');
-	            $file_info['size'] = wpfs_format_size(filesize($file_path));
+	            $file_info['size'] = $format_size_var;
 	            $file_info['nodes'] = 0;
 	            $file_info['absolute_path'] = $file_path;
 	            $file_info['name'] = $file_name;
@@ -279,7 +281,7 @@ class Wp_File_Scanner_Admin {
 	public function wpfs_pagination($per_page, $page) {
     // Scan the files and get the total files count
 
-	    wpfs_scan_files();
+	    $this->wpfs_scan_files();
 	    
 	    global $wpdb;
 
