@@ -110,9 +110,9 @@ class Wp_File_Scanner_Admin {
     public function wpfs_admin_menu() {
     	// Add a new menu page to the WordPress admin menu
         add_menu_page(
-            'WP File Scanner',
-            'WP File Scanner',
-            'anage_options',
+            __( 'WP File Scanner', 'wp-file-scanner' ),
+        	__( 'WP File Scanner', 'wp-file-scanner' ),
+        	'manage_options',
             'wp-file-scanner',
             array( $this, 'wpfs_admin_page' ),
 			'dashicons-admin-site',
