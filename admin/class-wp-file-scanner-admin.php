@@ -281,7 +281,7 @@ class Wp_File_Scanner_Admin {
 	public function wpfs_pagination($per_page, $page) {
     // Scan the files and get the total files count
 
-	    $this->wpfs_scan_files();
+	    $this->wpfs_scan_files($directories, $limit = 100);
 	    
 	    global $wpdb;
 
