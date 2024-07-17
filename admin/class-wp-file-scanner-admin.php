@@ -171,6 +171,8 @@ class Wp_File_Scanner_Admin {
 	    // Get the WordPress database object
 	    global $wpdb;
 
+	    $directories = array();
+
 	    // Define the table name for the file scanner data
 	    $table_name = $wpdb->prefix. 'file_scanner';
 
@@ -197,8 +199,9 @@ class Wp_File_Scanner_Admin {
 
 	    // Loop through the specified directories
 	    foreach ($directories as $dir) {
-	        // Sanitize the directory path
-	        $dir_path = sanitize_file_path($root_dir. '/'. $dir);
+
+	        // Sanitize the file path using wp_normalize_path()
+            $sanitized_path = wp_normalize_path( $root_dir. '/'. $dir );
 
 	        // Validate the directory path
 	        if (!is_dir($dir_path)) {
@@ -280,6 +283,8 @@ class Wp_File_Scanner_Admin {
 	 */
 	public function wpfs_pagination($per_page, $page) {
     // Scan the files and get the total files count
+
+		$directories = array();
 
 	    $this->wpfs_scan_files($directories, $limit = 100);
 	    
