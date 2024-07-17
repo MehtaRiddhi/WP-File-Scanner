@@ -52,14 +52,6 @@ class Wp_File_Scanner_Admin {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
-		/**
-	 	 * Hook to create the custom admin page
-	 	 *
-	 	 * This hook is triggered when the WordPress admin menu is being built, and it
-	 	 * calls the `wpfs_admin_menu` function to add a new menu item.
-	 	 */
-        add_action('admin_menu', array($this, 'wpfs_admin_menu'));
-
 	}
 
 	/**
@@ -109,7 +101,6 @@ class Wp_File_Scanner_Admin {
 	}
 
 
-
     /**
 	 * Creates the custom admin page
 	 *
@@ -123,7 +114,9 @@ class Wp_File_Scanner_Admin {
             'WP File Scanner',
             'anage_options',
             'wp-file-scanner',
-            array($this, 'wpfs_admin_page')
+            array( $this, 'wpfs_admin_page' ),
+			'dashicons-admin-site',
+			6
         );
     }
 

@@ -157,6 +157,15 @@ class Wp_File_Scanner {
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 
+		
+		/**
+	 	 * Hook to create the custom admin page
+	 	 *
+	 	 * This hook is triggered when the WordPress admin menu is being built, and it
+	 	 * calls the `wpfs_admin_menu` function to add a new menu item.
+	 	 */
+		$this->loader->add_action( 'admin_menu', $plugin_admin, 'wpfs_admin_menu' );
+
 	}
 
 	/**
