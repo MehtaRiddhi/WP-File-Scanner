@@ -52,6 +52,14 @@ class Wp_File_Scanner_Admin {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
+		/**
+	 	 * Hook to create the custom admin page
+	 	 *
+	 	 * This hook is triggered when the WordPress admin menu is being built, and it
+	 	 * calls the `wpfs_admin_menu` function to add a new menu item.
+	 	 */
+        add_action('admin_menu', array($this, 'wpfs_admin_menu'));
+
 	}
 
 	/**
@@ -100,67 +108,7 @@ class Wp_File_Scanner_Admin {
 
 	}
 
-	/**
-	 * Create the custom database table on activation
-	 *
-	 * This function creates the custom database table for the file scanner plugin
-	 * when the plugin is activated.
-	 */
-	public function wpfs_create_table() {
-	    // Get the WordPress database object
-	    global $wpdb;
 
-	    // Define the table name for the file scanner data
-	    $table_name = $wpdb->prefix. 'file_scanner';
-
-	    // Define the SQL query to create the table
-	    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-	        `id` int(11) NOT NULL AUTO_INCREMENT,
-	        `type` varchar(10) NOT NULL,
-	        `size` varchar(20) NOT NULL,
-	        `nodes` int(11) NOT NULL,
-	        `absolute_path` varchar(255) NOT NULL,
-	        `name` varchar(255) NOT NULL,
-	        `extension` varchar(10) NOT NULL,
-	        `permissions` varchar(10) NOT NULL,
-	        PRIMARY KEY (`id`)
-	    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-
-	    // Include the WordPress upgrade script to execute the SQL query
-	    require_once(ABSPATH. 'wp-admin/includes/upgrade.php');
-
-	    // Execute the SQL query to create the table
-	    dbDelta($sql);
-	}
-
-	/**
-	 * Drops the custom database table on deactivation
-	 *
-	 * This function is called when the plugin is deactivated, and it is responsible
-	 * for dropping the custom database table created by the `wpfs_create_table`
-	 * function.
-	 */
-	public function wpfs_drop_table() {
-	  // Get the global WordPress database object
-	  global $wpdb;
-
-	  // Define the name of the custom database table
-	  $table_name = $wpdb->prefix. 'file_scanner';
-
-	  // Execute a SQL query to drop the custom database table
-	  // The `IF EXISTS` clause ensures that the table is only dropped if it exists
-	  $wpdb->query("DROP TABLE IF EXISTS $table_name");
-	}
-
-	/**
- 	 * Hook to create the custom admin page
- 	 *
- 	 * This hook is triggered when the WordPress admin menu is being built, and it
- 	 * calls the `wpfs_admin_menu` function to add a new menu item.
- 	 */
-	public function __construct() {
-        add_action('admin_menu', array($this, 'wpfs_admin_menu'));
-    }
 
     /**
 	 * Creates the custom admin page

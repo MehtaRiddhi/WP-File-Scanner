@@ -31,7 +31,23 @@ class Wp_File_Scanner_Deactivator {
 	 */
 	public static function deactivate() {
 
-		wpfs_drop_table();
+		/**
+		 * Drops the custom database table on deactivation
+		 *
+		 * This function is called when the plugin is deactivated, and it is responsible
+		 * for dropping the custom database table created by the `wpfs_create_table`
+		 * function.
+		 */
+		
+		  // Get the global WordPress database object
+		  global $wpdb;
+
+		  // Define the name of the custom database table
+		  $table_name = $wpdb->prefix. 'file_scanner';
+
+		  // Execute a SQL query to drop the custom database table
+		  // The `IF EXISTS` clause ensures that the table is only dropped if it exists
+		  $wpdb->query("DROP TABLE IF EXISTS $table_name");
 
 	}
 

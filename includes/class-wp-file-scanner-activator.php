@@ -31,7 +31,38 @@ class Wp_File_Scanner_Activator {
 	 */
 	public static function activate() {
 
-		wpfs_create_table();
+			/**
+			 * Create the custom database table on activation
+			 *
+			 * This function creates the custom database table for the file scanner plugin
+			 * when the plugin is activated.
+			 */
+		
+		    // Get the WordPress database object
+		    global $wpdb;
+
+		    // Define the table name for the file scanner data
+		    $table_name = $wpdb->prefix. 'file_scanner';
+
+		    // Define the SQL query to create the table
+		    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+		        `id` int(11) NOT NULL AUTO_INCREMENT,
+		        `type` varchar(10) NOT NULL,
+		        `size` varchar(20) NOT NULL,
+		        `nodes` int(11) NOT NULL,
+		        `absolute_path` varchar(255) NOT NULL,
+		        `name` varchar(255) NOT NULL,
+		        `extension` varchar(10) NOT NULL,
+		        `permissions` varchar(10) NOT NULL,
+		        PRIMARY KEY (`id`)
+		    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+		    // Include the WordPress upgrade script to execute the SQL query
+		    require_once(ABSPATH. 'wp-admin/includes/upgrade.php');
+
+		    // Execute the SQL query to create the table
+		    dbDelta($sql);
+		
 
 	}
 
