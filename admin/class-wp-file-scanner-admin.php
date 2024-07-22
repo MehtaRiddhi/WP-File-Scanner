@@ -101,36 +101,130 @@ class Wp_File_Scanner_Admin {
 	}
 
 
-    /**
+   	/**
+	 * load init.
+	 */
+	public function wpfs_admin_init() {
+		global $wpdb;
+
+		/**
+     	* Handle Scan Now button click
+     	*/
+		$scan_now   = filter_input( INPUT_POST, 'scan_now', FILTER_SANITIZE_STRING );
+		$scan_nonce = filter_input( INPUT_POST, 'scan_nonce', FILTER_SANITIZE_STRING );
+
+		if ( isset( $scan_now ) && isset( $scan_nonce ) && wp_verify_nonce( $scan_nonce, 'scan_action' ) ) {
+
+			// Clear previous scan results
+			$wpdb->query( $wpdb->prepare( "TRUNCATE TABLE " . $wpdb->prefix . 'file_scanner' ) );
+
+			// Scan the root directory
+			$scan_results = $this->scan_directory( ABSPATH );
+
+			// Insert new scan results
+			foreach ( $scan_results as $result ) {
+				$wpdb->insert(
+					$wpdb->prefix . 'file_scanner',
+					array(
+						'type'        => $result['type'],
+						'size'        => $result['size'],
+						'nodes'       => $result['nodes'],
+						'path'        => $result['path'],
+						'name'        => $result['name'],
+						'extension'   => $result['extension'],
+						'permissions' => $result['permissions']
+					),
+					array(
+						'%s', // Type
+						'%s', // Size
+						'%d', // Nodes
+						'%s', // Path
+						'%s', // Name
+						'%s', // Extension
+						'%s'  // Permissions
+					)
+				);
+			}
+
+			// Clear cache for refreshed data
+			wp_cache_delete( 'file_scan_results', 'file_scan_results' );
+			wp_cache_delete( 'file_scan_total_items', 'file_scan_results' );
+
+			// Redirect to avoid form resubmission
+			wp_redirect( esc_url_raw( add_query_arg( 'page', 'file-scan', admin_url( 'admin.php' ) ) ) );
+			exit;
+		}
+	}
+
+	/**
+	 /**
 	 * Creates the custom admin page
 	 *
 	 * This function is called when the `admin_menu` hook is triggered, and it adds
 	 * a new menu item to the WordPress admin menu.
 	 */
-    public function wpfs_admin_menu() {
-    	// Add a new menu page to the WordPress admin menu
-        add_menu_page(
+	public function wpfs_admin_menu() {
+
+		add_menu_page(
             __( 'WP File Scanner', 'wp-file-scanner' ),
         	__( 'WP File Scanner', 'wp-file-scanner' ),
         	'manage_options',
-            'wp-file-scanner',
+            'file-scan',
             array( $this, 'wpfs_admin_page' ),
-			'dashicons-admin-site',
-			6
+			'dashicons-admin-generic',
+			4
         );
-    }
+	}
 
-    /**
- 	 * Admin page function
- 	 *
- 	 * This function generates the admin page for the file scanner plugin.
- 	*/
-    public function wpfs_admin_page() {
-        // Render the admin page content
-        include_once plugin_dir_path( __FILE__ ) . 'partials/wp-file-scanner-admin-display.php';
-    }
 
-    /**
+	/**
+ 	* Scans a directory and its subdirectories recursively.
+	 *
+	 * @param string $dir The directory to scan.
+	 * @param array  $results The results array to store the scan results.
+	 *
+	 * @return array The scan results.
+	 */
+	public function scan_directory_sub( $dir, &$results = array() ) {
+	    $files = scandir( $dir );
+
+	    foreach ( $files as $value ) {
+	        $path = realpath( $dir . DIRECTORY_SEPARATOR . $value );
+
+	        if ( ! is_dir( $path ) ) {
+	            $results[] = array(
+	                'type'        => 'file',
+	                'size'        => $this->wpfs_format_size( filesize( $path ) ),
+	                'nodes'       => 0,
+	                'path'        => $path,
+	                'name'        => basename( $path ),
+	                'extension'   => pathinfo( $path, PATHINFO_EXTENSION ),
+	                'permissions' => substr( sprintf( '%o', fileperms( $path ) ), - 4 )
+	            );
+	        } elseif ( $value !== "." && $value !== ".." ) {
+	            $subDirNodes   = 0;
+	            $subDirResults = array();
+	            $this->scan_directory_sub( $path, $subDirResults );
+	            foreach ( $subDirResults as $res ) {
+	                $subDirNodes += $res['nodes'];
+	            }
+	            $results[] = array(
+	                'type'        => 'directory',
+	                'size'        => '',
+	                'nodes'       => $subDirNodes,
+	                'path'        => $path,
+	                'name'        => basename( $path ),
+	                'extension'   => '',
+	                'permissions' => substr( sprintf( '%o', fileperms( $path ) ), - 4 )
+	            );
+	            $results   = array_merge( $results, $subDirResults );
+	        }
+	    }
+
+	    return $results;
+	}
+
+	/**
 	 * Format size function
 	 *
 	 * This function takes a file size in bytes as input and returns a human-readable
@@ -158,174 +252,104 @@ class Wp_File_Scanner_Admin {
 	    return round($size, 2) . ' ' . $units[$index];
 	}
 
+	
+
 	/**
-	 * Scan files and directories function
+	 * Scans a list of directories and their subdirectories recursively.
 	 *
-	 * This function scans specific directories and their subdirectories for files and directories,
-	 * and stores the results in the database.
+	 * @param string $dir The directory to scan.
+	 * @param array  $results The results array to store the scan results.
 	 *
-	 * @param array $directories Optional. An array of directories to scan. Default is an empty array.
-	 * @param int $limit Optional. The maximum number of files to scan. Default is 100.
-	 */
-	public function wpfs_scan_files($directories = array(), $limit = 100) {
-	    // Get the WordPress database object
-	    global $wpdb;
+	 * @return array The scan results.
+	*/
+	public function scan_directory( $dir, &$results = array() ) {
 
-	    $directories = array();
+		$directories = array(
+		    ABSPATH . 'wp-admin',
+		    ABSPATH . 'wp-content',
+		    //ABSPATH . 'wp-includes'
+		);
 
-	    // Define the table name for the file scanner data
-	    $table_name = $wpdb->prefix. 'file_scanner';
+		foreach ( $directories as $dir ) {
+        	$files = scandir( $dir );
 
-	    // Clear the table for fresh scan results
-	    $wpdb->query("DELETE FROM $table_name");
+	        foreach ( $files as $value ) {
+	            $path = realpath( $dir . DIRECTORY_SEPARATOR . $value );
 
-	    // Set the root directory for the scan
-	    $root_dir = ABSPATH;
-
-	    // If no directories are specified, scan only the WordPress core directories
-	    if (empty($directories)) {
-	        $directories = array(
-	            'wp-admin',
-	            'wp-content',
-	            'wp-includes'
-	        );
-	    }
-
-	    // Initialize an empty array to store the files
-	    $files = array();
-
-	    // Initialize a counter to keep track of the number of files scanned
-	    $count = 0;
-
-	    // Loop through the specified directories
-	    foreach ($directories as $dir) {
-
-	        // Sanitize the file path using wp_normalize_path()
-            $sanitized_path = wp_normalize_path( $root_dir. '/'. $dir );
-
-            $dir_path = ''; 
-            
-	        // Validate the directory path
-	        if (!is_dir($dir_path)) {
-	            continue; // Skip if not a directory
-	        }
-
-	        // Open the directory
-	        $handle = opendir($dir_path);
-
-	        // Loop through the files and directories in the directory
-	        while (($file = readdir($handle)) !== false) {
-	            // Skip the current directory (.) and parent directory (..)
-	            if ($file === '.' || $file === '..') {
-	                continue;
-	            }
-
-	            // Get the file path and name
-	            $file_path = $dir_path. '/'. $file;
-	            $file_name = $file;
-
-	            $format_size_var = $this->wpfs_format_size(filesize($file_path));
-
-	            // Get file information
-	            $file_info = array();
-	            $file_info['type'] = __('file', 'wp-file-scanner');
-	            $file_info['size'] = $format_size_var;
-	            $file_info['nodes'] = 0;
-	            $file_info['absolute_path'] = $file_path;
-	            $file_info['name'] = $file_name;
-	            $file_info['extension'] = pathinfo($file_name, PATHINFO_EXTENSION);
-	            $file_info['permissions'] = substr(sprintf('%o', fileperms($file_path)), -4);
-
-	            // Sanitize the data before inserting into the database
-	            $file_info['type'] = sanitize_text_field($file_info['type']);
-	            $file_info['size'] = sanitize_text_field($file_info['size']);
-	            $file_info['nodes'] = intval($file_info['nodes']);
-	            $file_info['absolute_path'] = sanitize_text_field($file_info['absolute_path']);
-	            $file_info['name'] = sanitize_text_field($file_info['name']);
-	            $file_info['extension'] = sanitize_text_field($file_info['extension']);
-	            $file_info['permissions'] = sanitize_text_field($file_info['permissions']);
-
-	            // Prepare the SQL query with placeholders
-	            $wpdb->insert(
-	                $table_name,
-	                $file_info,
-	                array(
-	                    '%s',
-	                    '%s',
-	                    '%d',
-	                    '%s',
-	                    '%s',
-	                    '%s',
-	                    '%s'
-	                )
-	            );
-
-	            // Increment the file count
-	            $count++;
-
-	            // If the limit is reached, break out of the loop
-	            if ($count >= $limit) {
-	                break 2;
+	            if ( ! is_dir( $path ) ) {
+	                $results[] = array(
+	                    'type'        => 'file',
+	                    'size'        => $this->wpfs_format_size( filesize( $path ) ),
+	                    'nodes'       => 0,
+	                    'path'        => $path,
+	                    'name'        => basename( $path ),
+	                    'extension'   => pathinfo( $path, PATHINFO_EXTENSION ),
+	                    'permissions' => substr( sprintf( '%o', fileperms( $path ) ), - 4 )
+	                );
+	            } elseif ( $value !== "." && $value !== ".." ) {
+	                $subDirNodes   = 0;
+	                $subDirResults = array();
+	                $this->scan_directory_sub( $path, $subDirResults );
+	                foreach ( $subDirResults as $res ) {
+	                    $subDirNodes += $res['nodes'];
+	                }
+	                $results[] = array(
+	                    'type'        => 'directory',
+	                    'size'        => '',
+	                    'nodes'       => $subDirNodes,
+	                    'path'        => $path,
+	                    'name'        => basename( $path ),
+	                    'extension'   => '',
+	                    'permissions' => substr( sprintf( '%o', fileperms( $path ) ), - 4 )
+	                );
+	                $results   = array_merge( $results, $subDirResults );
 	            }
 	        }
+    	}
 
-	        // Close the directory
-	        closedir($handle);
-	    }
+    	return $results;
 	}
 
-    /**
-	 * Pagination function
+
+	
+
+	/**
+	 * Display admin page
 	 *
-	 * This function generates pagination data for the file scanner plugin.
-	 *
-	 * @param int $per_page The number of items to display per page.
-	 * @param int $page The current page number.
-	 * @return array An array containing the pagination data.
+	 * @since 1.0.0
 	 */
-	public function wpfs_pagination($per_page, $page) {
-    // Scan the files and get the total files count
+	public function wpfs_admin_page() {
+		global $wpdb;
 
-		$directories = array();
+		// Fetch results for display with pagination
+		$items_per_page = 10;
+		$paged          = filter_input( INPUT_GET, 'paged', FILTER_VALIDATE_INT );
+		$paged          = $paged ? $paged : 1;
+		$offset         = ( $paged - 1 ) * $items_per_page;
 
-	    $this->wpfs_scan_files($directories, $limit = 100);
-	    
-	    global $wpdb;
+		$total_items = wp_cache_get( 'file_scan_total_items', 'file_scan_results' );
 
-	    $table_name = $wpdb->prefix. 'file_scanner';
-	    $total_files = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+		if ( false === $total_items ) {
+			$total_items = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM " . $wpdb->prefix . 'file_scanner' ) );
+			wp_cache_set( 'file_scan_total_items', $total_items, 'file_scan_results' );
+		}
 
-	    // Calculate the total number of pages
-	    $total_pages = ceil($total_files / $per_page);
+		$results = wp_cache_get( 'file_scan_results', 'file_scan_results' );
 
-	    // Calculate the offset for the current page
-	    $offset = ($page - 1) * $per_page;
+		if ( false === $results ) {
+			$results = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM {$wpdb->prefix}file_scanner LIMIT %d, %d", $offset, $items_per_page )
+			);
+			wp_cache_set( 'file_scan_results', $results, 'file_scan_results' );
+		}
 
-	    // Get the files for the current page
-	    $files = $wpdb->get_results("SELECT * FROM $table_name LIMIT $offset, $per_page");
+		$pagination_args = array(
+			'total_items' => $total_items,
+			'total_pages' => ceil( $total_items / $items_per_page ),
+			'per_page'    => $items_per_page,
+		);
 
-	    // Generate the pagination HTML
-	    $pagination_html = '<div class="tablenav">';
-	    $pagination_html .= '<div class="tablenav-pages">';
-	    $pagination_html .= '<span class="displaying-num">'. sprintf(__('Displaying %d - %d of %d', 'wp-file-scanner'), ($page - 1) * $per_page + 1, min($page * $per_page, $total_files), $total_files). '</span>';
-	    $pagination_html .= '<span class="pagination-links">';
-	    $pagination_html .= '<a class="first-page" href="?page=1">'. __('«', 'wp-file-scanner'). '</a>';
-	    $pagination_html .= '<a class="prev-page" href="?page='. max(1, $page - 1). '">‹</a>';
-	    $pagination_html .= '<span class="paging-input">';
-	    $pagination_html .= '<input class="current-page" type="text" value="'. $page. '" size="2">';
-	    $pagination_html .= '<span class="total-pages">'. __('of', 'wp-file-scanner'). ' '. $total_pages. '</span>';
-	    $pagination_html .= '</span>';
-	    $pagination_html .= '<a class="next-page" href="?page='. min($total_pages, $page + 1). '">›</a>';
-	    $pagination_html .= '<a class="last-page" href="?page='. $total_pages. '">»</a>';
-	    $pagination_html .= '</span>';
-	    $pagination_html .= '</div>';
-	    $pagination_html .= '</div>';
-
-	    // Return the pagination data
-	    return array(
-	        'files' => $files,
-	        'html' => $pagination_html
-	    );
+		include_once plugin_dir_path( __FILE__ ) . 'partials/wp-file-scanner-admin-display.php';
 	}
 
 

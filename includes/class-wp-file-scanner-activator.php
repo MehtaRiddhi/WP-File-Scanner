@@ -50,7 +50,7 @@ class Wp_File_Scanner_Activator {
 		        `type` varchar(10) NOT NULL,
 		        `size` varchar(20) NOT NULL,
 		        `nodes` int(11) NOT NULL,
-		        `absolute_path` varchar(255) NOT NULL,
+		        `path` varchar(255) NOT NULL,
 		        `name` varchar(255) NOT NULL,
 		        `extension` varchar(10) NOT NULL,
 		        `permissions` varchar(10) NOT NULL,
@@ -65,5 +65,6 @@ class Wp_File_Scanner_Activator {
 		
 
 	}
+
 
 }
